@@ -141,8 +141,12 @@ class LFM2AudioModel(nn.Module):
         if isinstance(device, str):
             device = torch.device(device)
 
-        with init_on_device(device, include_buffers=True):
+        # MPS doesn't need init_on_device like CUDA does
+        if device.type == "mps":
             model = cls(conf).to(device=device, dtype=dtype)
+        else:
+            with init_on_device(device, include_buffers=True):
+                model = cls(conf).to(device=device, dtype=dtype)
 
         if module_exists("flash_attn"):
             model.lfm.set_attn_implementation("flash_attention_2")

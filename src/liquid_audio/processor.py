@@ -111,7 +111,9 @@ class LFM2AudioProcessor:
             from safetensors.torch import load_file
 
             mimi_model = moshi.models.loaders.get_mimi(None, device=self.device)
-            mimi_weights = load_file(self.mimi_weights_path, device=str(self.device))
+            # safetensors doesn't support MPS, load on CPU then move to device
+            mimi_weights = load_file(self.mimi_weights_path, device="cpu")
+            mimi_weights = {k: v.to(self.device) for k, v in mimi_weights.items()}
             mimi_model.load_state_dict(mimi_weights, strict=True)
 
             self._mimi = mimi_model
@@ -148,7 +150,7 @@ class LFM2AudioProcessor:
             assert isinstance(detok_config.layer_types, list)
             detok_config.layer_types = [rename_layer(layer) for layer in detok_config.layer_types]  # type: ignore[arg-type]
 
-            detok = LFM2AudioDetokenizer(detok_config).eval().cuda()
+            detok = LFM2AudioDetokenizer(detok_config).eval().to(self.device)
 
             detok_weights_path = Path(self.detokenizer_path) / "model.safetensors"
             from safetensors.torch import load_file
